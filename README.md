@@ -13,7 +13,7 @@ The framing is deliberately narrow. Rather than scoring overall satisfaction (wh
 
 The architecture is hybrid: the LLM handles qualitative interpretation (reading a review and deciding which aspects are mentioned); deterministic Python handles all aggregation, filtering, and output.
 
-**v1 links:** [v1 GitHub — https://github.com/JuniorK96/foodpanda-apac-customer-feedback-analysis] | [v1 Tableau Public — https://public.tableau.com/app/profile/junior.khalit/viz/FoodpandaAPACCustomerFeedbackAnalysis2024-2026/Story1]
+**v1 links:** [GitHub](https://github.com/JuniorK96/foodpanda-apac-customer-feedback-analysis) | [Tableau Public](https://public.tableau.com/app/profile/junior.khalit/viz/FoodpandaAPACCustomerFeedbackAnalysis2024-2026/Story1)
 
 ## Data Source
 
