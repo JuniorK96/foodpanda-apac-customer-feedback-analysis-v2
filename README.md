@@ -145,5 +145,5 @@ The token-estimation script uses a `len(text) // 4` character-to-token approxima
 
 
 - **Author:**
-- Built by **Junior bin Khalit** 
+Built by **Junior bin Khalit** 
 [LinkedIn](https://linkedin.com/in/junior-k-473700155) · [GitHub](https://github.com/JuniorK96) · [Tableau Public](https://public.tableau.com/app/profile/junior.khalit)
