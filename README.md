@@ -103,7 +103,7 @@ The analysis feeds a 5-dashboard Tableau Story:
 4. **Restaurant Vendor-Side Audit** — flagged restaurants by `vendor_quality_flag` volume
 5. **Review Explorer** — drill into individual reviews with their extracted aspects
 
-[Tableau Public — https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysisV2/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link]
+**[→ View the interactive dashboard on Tableau Public](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysisV2/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)**
 
 ## Cost Transparency
 
