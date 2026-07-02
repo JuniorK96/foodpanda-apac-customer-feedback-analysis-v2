@@ -1,36 +1,70 @@
-# Foodpanda APAC Customer Feedback Analysis v2 — Aspect-Based Sentiment Extraction
+# Foodpanda APAC Customer Feedback Analysis
 
-LLM-powered extraction of foodpanda-controllable service issues from 279,723 customer reviews across 9 APAC markets.
+End-to-end analysis of Foodpanda customer reviews across APAC, built in two iterations: **v1** used traditional star-rating sentiment and keyword frequency analysis across 4.6 million reviews in 11 markets; **v2** added an LLM extraction layer to turn raw review text into structured, actionable service issues across 279,723 recent reviews in 9 markets.
 
-**[→ View the interactive dashboard on Tableau Public](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysisV2/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)**
+**Interactive dashboards (Tableau Public):**
 
+- **[v1 — Market Health & Keyword Analysis](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysis2024-2026/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)**
+- **[v2 — Aspect-Based Issue Extraction](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysisV2/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)**
 
-## Project Overview
+---
 
-This is version 2 of a customer feedback analysis built on publicly scraped foodpanda reviews. **v1** used unigram keyword frequency to surface what customers mention most — useful for a first pass, but unable to distinguish "late delivery" from "not late at all." **v2** adds an AI extraction layer: each review is read by Google's Gemini 2.5 Flash Lite and labeled with structured aspects, sentiment, and quoted evidence.
+## Why two versions
 
-The framing is deliberately narrow. Rather than scoring overall satisfaction (which the star rating already captures), the extraction targets **foodpanda-controllable issues** — things the platform's operations team could act on. Vendor-side complaints like bland food or small portions are excluded by design; they're the restaurant's responsibility, not the platform's.
+**v1** answered: *which APAC markets show signs of customer experience strain, and what service dimensions (food, rider, restaurant) are driving sentiment in each?* Sentiment came from explicit star ratings, and unigram keyword frequency surfaced what customers mention most. This worked as a first pass — it exposed market-level patterns and the dominant complaint themes — but keywords proved too vague to act on. A unigram cannot distinguish "late delivery" from "not late at all", negation is lost entirely, and a keyword like "small" says nothing about whether the platform can fix it.
 
-The architecture is hybrid: the LLM handles qualitative interpretation (reading a review and deciding which aspects are mentioned); deterministic Python handles all aggregation, filtering, and output.
+**v2** closed that gap with an AI extraction layer: each review is read by Google's Gemini 2.5 Flash Lite and labeled with structured aspects, sentiment, and quoted evidence. The framing is deliberately narrow — rather than scoring overall satisfaction (which the star rating already captures), the extraction targets **foodpanda-controllable issues**: things the platform's operations team could act on. Vendor-side complaints like bland food or small portions are excluded by design; they're the restaurant's responsibility, not the platform's.
 
-**v1 links:** [GitHub](https://github.com/JuniorK96/foodpanda-apac-customer-feedback-analysis) | [Tableau Public](https://public.tableau.com/app/profile/junior.khalit/viz/FoodpandaAPACCustomerFeedbackAnalysis2024-2026/Story1)
+The v2 architecture is hybrid: the LLM handles qualitative interpretation (reading a review and deciding which aspects are mentioned); deterministic Python handles all aggregation, filtering, and output.
 
-## Data Source
+---
 
-The underlying data comes from the ["Restaurants" and "Reviews" datasets by bwandowando on Kaggle](https://www.kaggle.com/bwandowando) — a public scrape of foodpanda customer reviews across APAC markets.
+## v1 — Sentiment & Keyword Analysis (4.6M reviews, 11 markets)
+
+### Key findings
+
+**The customer pain point is restaurant-side, not delivery-side.** Riders are rated 4.78 on average; food is rated 3.33 — a consistent 1.45-point gap across all 11 markets. Delivery execution is not the problem.
+
+**Customer sentiment is polarised, not average.** 26% of reviews are 1-star and 45% are 5-star, with only 28% in the 2–4 star middle. A J-shaped distribution that makes the average rating misleading — the 1-star rate should be tracked as its own KPI.
+
+**Small portions are the #1 complaint APAC-wide.** Appears as "small" in Singapore (2,614), Philippines (2,775), Malaysia (4,202) and as "kecik" in Malaysia (4,117). The most consistent complaint across every market analysed.
+
+**Malaysia holds the strongest customer loyalty signal in APAC** — "terbaik" (26,638), "repeat" (23,830), "terima kasih" (17,440+). But also the strongest disappointment signal — "kecewa" (4,521), "disappointed" (3,980). A base worth protecting through a recovery flow before silent churn.
+
+**Taiwan is the APAC top performer (3.85 average) and is being divested to Grab in H2 2026.** There is a window to document what works there before the transition.
+
+Full set of findings and recommendations on the [Recommendations dashboard](https://public.tableau.com/shared/D4W6GY8CS?:display_count=n&:origin=viz_share_link).
+
+### Methodology
+
+- **Sentiment** is derived from explicit star ratings (1–2 = Negative, 3 = Neutral, 4–5 = Positive) rather than NLP scoring. Star ratings are language-agnostic and provided directly by customers — more reliable than NLP on a multilingual dataset.
+- **Keyword analysis** uses frequency ranking within sentiment groups, with `share_of_voice` to normalise for slice-size differences. English and Malay keywords were validated by the analyst (native Malaysian speaker).
+- **Language detection** via `langdetect`, with a corrected misclassification of Traditional Chinese as Korean (~538k reviews) identified through sampling and remapped to `zh-tw`.
+- **Singapore region assignment** combined postal-code regex extraction with OneMap API geocoding, reaching ~60% coverage. Uncovered addresses are labelled "Unknown" rather than imputed.
+
+### v1 limitations (and what motivated v2)
+
+- **Keyword analysis is unigram-only** — negation is not captured (e.g. "tidak sedap" splits into separate tokens). This is the core limitation v2 was built to solve.
+- **Singapore region coverage** sits at ~60%; the remaining 40% labelled "Unknown".
+- **Chinese keywords** (Taiwan, Hong Kong) are shown for exploratory purposes — native speaker validation recommended before operational use.
+- **Six markets excluded from keyword analysis** (Pakistan, Bangladesh, Thailand, Myanmar, Cambodia, Laos) due to language tool limitations on this Python environment.
+- **Malay NLP** (Malaya library) was explored but not implemented due to Python 3.14 compatibility constraints.
+
+---
+
+## v2 — LLM Aspect-Based Extraction (279,723 reviews, 9 markets)
+
+### Scope
 
 v1 used the full historical dataset (4.6M reviews, 11 markets). v2 filters to a tighter scope:
 
 - **Time window:** November 2025 – January 2026 (latest 3 months at time of analysis)
-- **Markets:** 9 active APAC markets. Thailand was excluded (foodpanda exited in May 2025). Philippines was excluded (no longer scraped in the dataset's latest snapshot).
+- **Markets:** 9 active APAC markets — Pakistan, Malaysia, Bangladesh, Taiwan, Singapore, Myanmar, Cambodia, Laos, and Hong Kong. Thailand was excluded (foodpanda exited in May 2025). Philippines was excluded (no longer scraped in the dataset's latest snapshot).
 - **Text filter:** Reviews shorter than 20 characters were dropped (typically emoji-only or single-word responses with no extractable content).
-- **Final scope:** 279,723 reviews across Pakistan, Malaysia, Bangladesh, Taiwan, Singapore, Myanmar, Cambodia, Laos, and Hong Kong.
 
-## Methodology
+### The 6-aspect taxonomy
 
-### The 6-Aspect Taxonomy
-
-The extraction prompt classifies each review against 6 aspect labels. These were chosen to cover issues that foodpanda's platform operations can directly influence — rider management, logistics, order fulfilment, and food safety escalation.
+The extraction prompt classifies each review against 6 aspect labels, chosen to cover issues that foodpanda's platform operations can directly influence — rider management, logistics, order fulfilment, and food safety escalation.
 
 | Aspect | What it captures | What it excludes |
 |---|---|---|
@@ -43,13 +77,13 @@ The extraction prompt classifies each review against 6 aspect labels. These were
 
 Reviews that mention none of these aspects return an empty array. In the flattened output, these appear as rows with null aspect/sentiment/evidence — they represent reviews about food taste, portion size, general satisfaction, or other topics outside the platform's direct control.
 
-### Model Selection
+### Model selection
 
-Prompt development (V1–V5) was done locally using **Llama 3.1 8B via Ollama** — free, fast iteration cycles, no API costs during the experimental phase. Production extraction used **Google Gemini 2.5 Flash Lite** via the `google-genai` async API, chosen for its balance of cost (~$0.10/M input tokens, $0.40/M output tokens), speed, and sufficient output quality for structured aspect extraction.
+Prompt development was done locally using **Llama 3.1 8B via Ollama** — free, fast iteration cycles, no API costs during the experimental phase. Production extraction used **Google Gemini 2.5 Flash Lite** via the `google-genai` async API, chosen for its balance of cost (~$0.10/M input tokens, $0.40/M output tokens), speed, and sufficient output quality for structured aspect extraction.
 
-### Prompt Iteration: V1 through V6
+### Prompt iteration: V1 through V6
 
-The final production prompt was version 6, reached through 6 deliberate iterations. This wasn't a one-shot design — each version addressed specific failure modes observed in the previous one.
+The final production prompt was version 6, reached through 6 deliberate iterations. (Prompt versions V1–V6 are internal to the v2 project — not to be confused with the project's v1/v2.) This wasn't a one-shot design — each version addressed specific failure modes observed in the previous one.
 
 **V1** started with a 16-aspect taxonomy covering everything: food quality, food temperature, portion size, app reliability, payment issues, price fairness, and more. The problem was scope — it mixed foodpanda-controllable issues with vendor-side complaints and topics the platform has no leverage over. The model dutifully labeled food taste complaints as `food_quality`, which would have flooded downstream analysis with noise that operations teams can't act on.
 
@@ -80,7 +114,7 @@ The lower precision reflects the LLM's tendency to surface aspects I considered 
 
 For a production use case focused on surfacing issues rather than suppressing false positives, high recall with lower precision is the preferable error profile. Missing a genuine delivery problem is costlier than surfacing an extra "rider was polite" for an analyst to review. The downstream dashboards expose sentiment as a filter, which lets users narrow to negative-sentiment aspects when triaging.
 
-## Key Results
+### Key results
 
 | Metric | Value |
 |---|---|
@@ -93,19 +127,7 @@ For a production use case focused on surfacing issues rather than suppressing fa
 | Total extraction time | ~18 hours (across sessions) |
 | Total cost | SGD 30.98 (~USD 24) |
 
-## Dashboards
-
-The analysis feeds a 5-dashboard Tableau Story:
-
-1. **Introduction** — project context and methodology overview
-2. **Aspect Distribution by Market** — which markets surface which issues, cross-market comparison
-3. **Aspect Distribution by Star Rating** — how aspect mentions correlate with review scores
-4. **Restaurant Vendor-Side Audit** — flagged restaurants by `vendor_quality_flag` volume
-5. **Review Explorer** — drill into individual reviews with their extracted aspects
-
-**[→ View the interactive dashboard on Tableau Public](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysisV2/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)**
-
-## Cost Transparency
+### Cost transparency
 
 The total cost for the v2 extraction was **SGD 30.98**, as reported by Google AI Studio billing.
 
@@ -120,7 +142,7 @@ The total cost for the v2 extraction was **SGD 30.98**, as reported by Google AI
 
 The token-estimation script uses a `len(text) // 4` character-to-token approximation. This likely undercounts tokens for non-Latin scripts (Urdu, Bengali, Burmese, Chinese characters), so the estimate is directional. The Google AI Studio billed total is the authoritative figure.
 
-## Known Limitations
+### v2 known limitations
 
 **Extraction is not exhaustive.** F1 = 56% (precision = 43%, recall = 82%). Some negative reviews appear with no extracted aspect — because they mention out-of-taxonomy issues (portion size, taste), are too short or generic ("bad food"), or are genuine LLM misses (~18% recall gap).
 
@@ -134,16 +156,54 @@ The token-estimation script uses a `len(text) // 4` character-to-token approxima
 
 **Language coverage.** The V6 prompt and validation sample are English-dominant. Markets like Bangladesh (Bengali), Pakistan (Urdu), Cambodia (Khmer), Myanmar (Burmese), and Laos (Lao) contain significant non-English review text. Gemini Flash Lite supports these languages, but extraction accuracy has not been formally validated beyond English, Malay, and Mandarin.
 
-**Cost figure context.** SGD 30.98 is the actual Google AI Studio billed total. The separate token-estimation script approximated production-only cost at SGD 27.26; the gap is development, iteration, and retry overhead. The token estimate uses a `len/4` heuristic that likely undercounts non-Latin scripts, so it is directional only.
+---
 
-## Repository Contents
+## Dashboards
+
+**[v1 dashboard](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysis2024-2026/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)** — market-level experience patterns across 11 APAC markets: rating distributions, food vs rider gaps, keyword analysis by sentiment, and recommendations.
+
+**[v2 dashboard](https://public.tableau.com/views/FoodpandaAPACCustomerFeedbackAnalysisV2/Story1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)** — a 5-dashboard Tableau Story:
+
+1. **Introduction** — project context and methodology overview
+2. **Aspect Distribution by Market** — which markets surface which issues, cross-market comparison
+3. **Aspect Distribution by Star Rating** — how aspect mentions correlate with review scores
+4. **Restaurant Vendor-Side Audit** — flagged restaurants by `vendor_quality_flag` volume
+5. **Review Explorer** — drill into individual reviews with their extracted aspects
+
+---
+
+## Data source
+
+The underlying data comes from the ["Restaurants" and "Reviews" datasets by bwandowando on Kaggle](https://www.kaggle.com/bwandowando) — a public scrape of foodpanda customer reviews across APAC markets, with 2025 and 2026 versioned snapshots. Individual datasets used:
+
+- [Malaysia](https://www.kaggle.com/datasets/bwandowando/malaysian-cities-food-panda-resto-reviews)
+- [Singapore](https://www.kaggle.com/datasets/bwandowando/food-panda-resto-reviews)
+- [Philippines](https://www.kaggle.com/datasets/bwandowando/food-panda-restaurant-reviews)
+- [Taiwan](https://www.kaggle.com/datasets/bwandowando/taiwan-food-panda-restaurant-reviews)
+- [Hong Kong](https://www.kaggle.com/datasets/bwandowando/hongkong-food-panda-restaurant-reviews)
+- [Bangladesh](https://www.kaggle.com/datasets/bwandowando/bangladesh-cities-food-panda-resto-reviews)
+- [Pakistan](https://www.kaggle.com/datasets/bwandowando/pakistan-cities-food-panda-resto-reviews)
+- [Thailand](https://www.kaggle.com/datasets/bwandowando/thailand-cities-food-panda-resto-reviews)
+- [Cambodia](https://www.kaggle.com/datasets/bwandowando/cambodian-food-panda-resto-reviews)
+- [Laos](https://www.kaggle.com/datasets/bwandowando/laos-food-panda-restaurant-reviews)
+- [Myanmar](https://www.kaggle.com/datasets/bwandowando/myanmar-food-panda-restaurant-reviews)
+
+---
+
+## Repository contents
 
 | File | Description |
 |---|---|
-| `v2_production_extraction.ipynb` | Production extraction pipeline — loads data, sends reviews to Gemini, saves structured JSON per market, flattens to CSV. Contains all code with execution outputs preserved. |
-| `README.md` | This file. |
+| `v1_foodpanda_APAC_analysis.ipynb` | v1 full pipeline — data loading, deduplication, geocoding, language detection, feature engineering, keyword extraction |
+| `v2_production_extraction.ipynb` | v2 production extraction pipeline — loads data, sends reviews to Gemini, saves structured JSON per market, flattens to CSV. Contains all code with execution outputs preserved. |
+| `README.md` | This file |
 
+Data files are not included in this repository. Source data is available on Kaggle (linked above). Analytical outputs (`foodpanda_APAC_final.csv`, `foodpanda_keywords.csv`, and the v2 flattened aspect CSV) are generated by the notebooks.
 
-- **Author:**
-Built by **Junior bin Khalit** 
+---
+
+## About
+
+Built by **Junior bin Khalit** — data analyst transitioning from operations into analytics.
+
 [LinkedIn](https://linkedin.com/in/junior-k-473700155) · [GitHub](https://github.com/JuniorK96) · [Tableau Public](https://public.tableau.com/app/profile/junior.khalit)
